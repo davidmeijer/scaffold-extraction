@@ -44,6 +44,12 @@ def cli() -> argparse.Namespace:
         default="polyketide",
         help="Class of BGCs to parse."
     )
+    parser.add_argument(
+        "-tbd",
+        "--tbd",
+        action="store_true",
+        help="Parse data as TBD."
+    )
     return parser.parse_args()
 
 
@@ -131,8 +137,19 @@ class Record:
         str: CSV line.
         """
         return [
-            f"{self.id},{smi}\n"
-            for smi in self.smiles
+            f"{self.id}_{idx + 1},{smi}\n"
+            for idx, smi in enumerate(self.smiles)
+        ]
+    
+    def to_tbd(self) -> ty.List[str]:
+        """
+        Returns
+        -------
+        str: TBD line.
+        """
+        return [
+            f"{self.id}_{idx + 1}\t{smi}\n"
+            for idx, smi in enumerate(self.smiles)
         ]
 
     @classmethod
@@ -143,6 +160,15 @@ class Record:
         str: CSV header.
         """
         return "id,smiles\n"
+
+    @classmethod
+    def tbd_header(cls) -> str:
+        """
+        Returns
+        -------
+        str: TBD header.
+        """
+        return "id\tsmiles\n"
 
 
 def parse_mibig_json_record(file_path: str) -> Record:
@@ -172,10 +198,16 @@ def main() -> None:
     ]
     records = filter(lambda r: args.biosyn_class in r.biosyn_class, records)
     with open(args.output, "w") as handle:
-        handle.write(Record.csv_header())
-        for record in records:
-            for line in record.to_csv():
-                handle.write(line)
+        if args.tbd:
+            handle.write(Record.tbd_header())
+            for record in records:
+                for line in record.to_tbd():
+                    handle.write(line)
+        else:
+            handle.write(Record.csv_header())
+            for record in records:
+                for line in record.to_csv():
+                    handle.write(line)
 
 
 if __name__ == "__main__":
